@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "DeciGrade",
+    "slug": "decigrade-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.decigrade.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to scan student scripts.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select script images.",
+        "NSMicrophoneUsageDescription": "This app needs access to microphone for video recording."
+      }
+    },
+    "android": {
+      "package": "com.decigrade.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow DeciGrade to access your camera to scan student scripts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow DeciGrade to access your photo library to select script images."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow DeciGrade to access your media library.",
+          "savePhotosPermission": "Allow DeciGrade to save photos to your media library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": null
+      }
+    }
+  }
+} 

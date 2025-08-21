@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeciGrade Asset Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .asset { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        canvas { border: 1px solid #ddd; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; background: #1976D2; color: white; border: none; cursor: pointer; }
+        button:hover { background: #1565C0; }
+        .download-link { display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; margin: 5px; }
+        .download-link:hover { background: #388E3C; }
+    </style>
+</head>
+<body>
+    <h1>DeciGrade Mobile App Asset Generator</h1>
+    <p>Use this tool to generate basic placeholder images for your mobile app. Click the buttons to generate images, then right-click and save them.</p>
+
+    <!-- App Icon -->
+    <div class="asset">
+        <h2>1. App Icon (1024x1024)</h2>
+        <canvas id="iconCanvas" width="1024" height="1024"></canvas>
+        <br>
+        <button onclick="generateIcon()">Generate Icon</button>
+        <a id="iconDownload" class="download-link" download="icon.png" style="display:none;">Download icon.png</a>
+    </div>
+
+    <!-- Adaptive Icon -->
+    <div class="asset">
+        <h2>2. Android Adaptive Icon (1024x1024)</h2>
+        <canvas id="adaptiveCanvas" width="1024" height="1024"></canvas>
+        <br>
+        <button onclick="generateAdaptiveIcon()">Generate Adaptive Icon</button>
+        <a id="adaptiveDownload" class="download-link" download="adaptive-icon.png" style="display:none;">Download adaptive-icon.png</a>
+    </div>
+
+    <!-- Splash Screen -->
+    <div class="asset">
+        <h2>3. Splash Screen (1242x2436)</h2>
+        <canvas id="splashCanvas" width="1242" height="2436"></canvas>
+        <br>
+        <button onclick="generateSplash()">Generate Splash</button>
+        <a id="splashDownload" class="download-link" download="splash.png" style="display:none;">Download splash.png</a>
+    </div>
+
+    <!-- Favicon -->
+    <div class="asset">
+        <h2>4. Favicon (32x32)</h2>
+        <canvas id="faviconCanvas" width="32" height="32"></canvas>
+        <br>
+        <button onclick="generateFavicon()">Generate Favicon</button>
+        <a id="faviconDownload" class="download-link" download="favicon.png" style="display:none;">Download favicon.png</a>
+    </div>
+
+    <script>
+        function generateIcon() {
+            const canvas = document.getElementById('iconCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#1976D2';
+            ctx.fillRect(0, 0, 1024, 1024);
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📝', 512, 412);
+            ctx.fillText('DeciGrade', 512, 612);
+            
+            // Enable download
+            const link = document.getElementById('iconDownload');
+            link.href = canvas.toDataURL();
+            link.style.display = 'inline-block';
+        }
+
+        function generateAdaptiveIcon() {
+            const canvas = document.getElementById('adaptiveCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#FF6B35';
+            ctx.fillRect(0, 0, 1024, 1024);
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📝', 512, 412);
+            ctx.fillText('DeciGrade', 512, 612);
+            
+            // Enable download
+            const link = document.getElementById('adaptiveDownload');
+            link.href = canvas.toDataURL();
+            link.style.display = 'inline-block';
+        }
+
+        function generateSplash() {
+            const canvas = document.getElementById('splashCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, 2436);
+            gradient.addColorStop(0, '#1976D2');
+            gradient.addColorStop(1, '#42A5F5');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 1242, 2436);
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 80px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📝', 621, 1218);
+            ctx.fillText('DeciGrade', 621, 1318);
+            ctx.font = 'bold 40px Arial';
+            ctx.fillText('Intelligent Script Marking Platform', 621, 1418);
+            
+            // Enable download
+            const link = document.getElementById('splashDownload');
+            link.href = canvas.toDataURL();
+            link.style.display = 'inline-block';
+        }
+
+        function generateFavicon() {
+            const canvas = document.getElementById('faviconCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#1976D2';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📝', 16, 16);
+            
+            // Enable download
+            const link = document.getElementById('faviconDownload');
+            link.href = canvas.toDataURL();
+            link.style.display = 'inline-block';
+        }
+
+        // Generate all assets on page load
+        window.onload = function() {
+            generateIcon();
+            generateAdaptiveIcon();
+            generateSplash();
+            generateFavicon();
+        };
+    </script>
+</body>
+</html>
