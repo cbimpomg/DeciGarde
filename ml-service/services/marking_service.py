@@ -168,9 +168,9 @@ class MarkingService:
             
             return {
                 "score": score,
-                "confidence": confidence,
+                "confidence": float(confidence),  # Ensure float type for JSON serialization
                 "matched_keywords": matched_keywords,
-                "coverage": keyword_coverage
+                "coverage": float(keyword_coverage)  # Ensure float type for JSON serialization
             }
             
         except Exception as e:
@@ -186,8 +186,8 @@ class MarkingService:
                 score = int(similarity * max_score)
                 return {
                     "score": score,
-                    "confidence": similarity,
-                    "similarity": similarity
+                    "confidence": float(similarity),  # Ensure float type
+                    "similarity": float(similarity)  # Ensure float type
                 }
             
             # Use sentence transformers for semantic similarity
@@ -202,8 +202,8 @@ class MarkingService:
             
             return {
                 "score": score,
-                "confidence": similarity,
-                "similarity": similarity
+                "confidence": float(similarity),  # Ensure float type
+                "similarity": float(similarity)  # Ensure float type
             }
             
         except Exception as e:
@@ -274,7 +274,7 @@ class MarkingService:
             
             return {
                 "score": score,
-                "confidence": confidence,
+                "confidence": float(confidence),  # Ensure float type for JSON serialization
                 "feedback_points": feedback_points,
                 "word_count": word_count,
                 "char_count": char_count
@@ -415,9 +415,9 @@ class MarkingService:
                 "score": final_score,
                 "max_score": max_score,
                 "feedback": feedback,
-                "confidence": final_confidence,
+                "confidence": float(final_confidence),  # Ensure float type for JSON serialization
                 "matched_keywords": results.get('keyword', {}).get('matched_keywords', []),
-                "semantic_score": results.get('semantic', {}).get('similarity', 0.0),
+                "semantic_score": float(results.get('semantic', {}).get('similarity', 0.0)),  # Ensure float type
                 "improvements": improvements,
                 "approach_scores": {
                     approach: result.get('score', 0) 
@@ -543,7 +543,9 @@ class MarkingService:
             if norm1 == 0 or norm2 == 0:
                 return 0.0
             
-            return dot_product / (norm1 * norm2)
+            # Convert numpy float to Python float for JSON serialization
+            similarity = float(dot_product / (norm1 * norm2))
+            return similarity
         except Exception as e:
             logger.error(f"Cosine similarity calculation failed: {e}")
             return 0.0

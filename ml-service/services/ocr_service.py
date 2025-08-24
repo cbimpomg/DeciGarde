@@ -181,24 +181,75 @@ class OCRService:
     def _extract_with_paddleocr(self, image: np.ndarray) -> Dict[str, Any]:
         """Extract text using PaddleOCR"""
         try:
-            result = self.engines['paddleocr'].ocr(image, cls=True)
+            # PaddleOCR 3.1.0+ has a different API - removed cls parameter
+            result = self.engines['paddleocr'].ocr(image)
+            
+            # Debug logging
+            logger.debug(f"PaddleOCR raw result: {result}")
             
             if not result or not result[0]:
+                logger.debug("PaddleOCR returned empty result")
                 return {"text": "", "confidence": 0.0, "provider": "paddleocr"}
             
             # Extract text and confidence from PaddleOCR result
             texts = []
             confidences = []
             
-            for line in result[0]:
-                if line[1]:  # Check if text exists
-                    text = line[1][0]  # Extract text
-                    confidence = line[1][1]  # Extract confidence
-                    texts.append(text)
-                    confidences.append(confidence)
+            # PaddleOCR 3.1.0+ returns a different structure
+            # Check if we have the new format with 'rec_texts' and 'rec_scores'
+            if isinstance(result[0], dict) and 'rec_texts' in result[0]:
+                # New format: result[0] is a dict with 'rec_texts' and 'rec_scores'
+                rec_texts = result[0].get('rec_texts', [])
+                rec_scores = result[0].get('rec_scores', [])
+                
+                logger.debug(f"Found new PaddleOCR format: {len(rec_texts)} text segments")
+                
+                for i, (text, score) in enumerate(zip(rec_texts, rec_scores)):
+                    if text and isinstance(text, str) and text.strip():
+                        texts.append(text.strip())
+                        confidences.append(float(score))
+                        logger.debug(f"Text {i}: '{text}' (confidence: {score})")
+                    else:
+                        logger.debug(f"Skipping empty/invalid text {i}: '{text}'")
+            
+            else:
+                # Try the old format parsing as fallback
+                logger.debug("Trying old format parsing")
+                for i, line in enumerate(result[0]):
+                    try:
+                        logger.debug(f"Processing line {i}: {line}")
+                        
+                        # PaddleOCR result structure: [[[x1,y1,x2,y2], (text, confidence)], ...]
+                        if isinstance(line, list) and len(line) >= 2:
+                            # Check if the second element is a tuple with text and confidence
+                            if isinstance(line[1], tuple) and len(line[1]) >= 2:
+                                text = line[1][0]
+                                confidence = line[1][1]
+                                
+                                if text and isinstance(text, str):
+                                    texts.append(text)
+                                    confidences.append(float(confidence))
+                                    logger.debug(f"Extracted text: '{text}' with confidence: {confidence}")
+                                else:
+                                    logger.debug(f"Skipping invalid text: {text}")
+                            else:
+                                logger.debug(f"Line {i} second element is not a tuple: {line[1]}")
+                        else:
+                            logger.debug(f"Line {i} has unexpected structure: {line}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Error processing line {i}: {e}, line: {line}")
+                        continue
+            
+            if not texts:
+                logger.warning("No valid text extracted from PaddleOCR result")
+                return {"text": "", "confidence": 0.0, "provider": "paddleocr"}
             
             full_text = " ".join(texts)
             avg_confidence = np.mean(confidences) if confidences else 0.0
+            
+            logger.info(f"PaddleOCR extracted {len(texts)} text segments, total length: {len(full_text)}")
+            logger.info(f"Extracted text: '{full_text}'")
             
             return {
                 "text": full_text,
