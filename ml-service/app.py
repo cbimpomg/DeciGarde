@@ -123,8 +123,9 @@ async def process_ocr(
         # Read image content
         image_content = await image.read()
         
-        # Preprocess image
-        processed_image = image_preprocessor.preprocess(image_content)
+        # TEMPORARY: Bypass preprocessor to fix OCR accuracy
+        # processed_image = image_preprocessor.preprocess(image_content)
+        processed_image = image_content  # Use original image directly
         
         # Extract text using OCR
         ocr_result = ocr_service.extract_text(

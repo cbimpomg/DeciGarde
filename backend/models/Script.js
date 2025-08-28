@@ -40,6 +40,14 @@ const scriptSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
+    ocrConfidence: {
+      type: Number,
+      default: 0
+    },
+    ocrProvider: {
+      type: String,
+      default: ''
+    },
     processedAt: {
       type: Date,
       default: null
@@ -60,6 +68,16 @@ const scriptSchema = new mongoose.Schema({
     questionText: {
       type: String,
       required: true
+    },
+    questionType: {
+      type: String,
+      enum: ['definition', 'explanation', 'calculation', 'essay', 'multiple_choice', 'true_false', 'fill_blank', 'matching'],
+      required: true
+    },
+    subject: {
+      type: String,
+      required: true,
+      trim: true
     },
     maxScore: {
       type: Number,
@@ -86,9 +104,23 @@ const scriptSchema = new mongoose.Schema({
       default: ''
     },
     keywords: [{
-      type: String,
-      trim: true
+      word: String,
+      weight: Number,
+      required: Boolean,
+      type: String
     }],
+    confidence: {
+      type: Number,
+      default: 0
+    },
+    semanticScore: {
+      type: Number,
+      default: 0
+    },
+    markingDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     isManuallyReviewed: {
       type: Boolean,
       default: false
@@ -98,7 +130,7 @@ const scriptSchema = new mongoose.Schema({
   // Processing status
   status: {
     type: String,
-    enum: ['uploaded', 'processing', 'marked', 'reviewed', 'submitted'],
+    enum: ['uploaded', 'processing', 'processed', 'marked', 'marking_failed', 'reviewed', 'submitted'],
     default: 'uploaded'
   },
   

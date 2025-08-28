@@ -64,8 +64,20 @@ const scriptUploadSchema = Joi.object({
       Joi.object({
         questionNumber: Joi.number().integer().min(1).required(),
         questionText: Joi.string().min(1).required(),
+        questionType: Joi.string().valid('definition', 'explanation', 'calculation', 'essay', 'multiple_choice', 'true_false', 'fill_blank', 'matching').required(),
+        subject: Joi.string().min(2).max(100).required(),
         maxScore: Joi.number().integer().min(1).required(),
-        keywords: Joi.array().items(Joi.string()).default([])
+        keywords: Joi.array().items(Joi.string()).default([]),
+        rubric: Joi.object({
+          keywords: Joi.array().items(Joi.string()).default([]),
+          description: Joi.string().optional(),
+          scoringCriteria: Joi.array().items(
+            Joi.object({
+              criterion: Joi.string().required(),
+              points: Joi.number().required()
+            })
+          ).default([])
+        }).optional()
       })
     ).min(1).required()
   }).required().messages({

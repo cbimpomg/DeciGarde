@@ -28,6 +28,7 @@ const io = socketIo(server, {
   cors: {
     origin: [
       process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3001', // Web dashboard development server
       'http://localhost:8081',
       'http://localhost:8082', // Expo development server (alternate port)
       'http://localhost:19006',
@@ -56,6 +57,7 @@ app.use('/api/', limiter);
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
+    'http://localhost:3001', // Web dashboard development server
     'http://localhost:8081', // Expo development server
     'http://localhost:8082', // Expo development server (alternate port)
     'http://localhost:19006', // Expo web
@@ -73,7 +75,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Static file serving for uploaded images
 app.use('/uploads', express.static('uploads'));
 
-// Health check endpoint
+// Health check endpoints
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -82,11 +84,23 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    service: 'DeciGarde Backend',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
 // API routes
 app.use('/api/scripts', scriptRoutes);
 app.use('/api/marking', markingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/rubrics', require('./routes/rubrics'));
+app.use('/api/rubric-templates', require('./routes/rubrics'));
+app.use('/api/ai', require('./routes/rubrics'));
 
 // ML Service routes
 app.use('/api/ml', mlServiceRoutes);

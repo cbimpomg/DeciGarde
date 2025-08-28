@@ -11,11 +11,6 @@ const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { validateScriptUpload } = require('../middleware/validation');
 const { processOCR } = require('../services/ocrService');
-const axios = require('axios');
-const { markScript } = require('../services/markingService');
-
-const router = express.Router();
-
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -106,13 +101,20 @@ const processMLServiceOCR = async (scriptId) => {
         form.append('language', 'eng');
         form.append('enhance_handwriting', 'true');
         
-        // Send to ML service with timeout
+        // Send to ML service with extended timeout for OCR processing
+        console.log(`📤 Sending page ${i + 1} to ML service...`);
+        const startTime = Date.now();
+        
         const mlResponse = await axios.post('http://localhost:8000/api/ml/ocr', form, {
           headers: {
             ...form.getHeaders(),
           },
-          timeout: 30000 // 30 second timeout
+          timeout: 120000 // 2 minute timeout for OCR processing
         });
+        
+        const processingTime = Date.now() - startTime;
+        console.log(`📥 ML service response received in ${processingTime}ms`);
+        console.log(`📊 Response status: ${mlResponse.status}, data:`, mlResponse.data);
         
         if (mlResponse.data.success) {
           results.push({
@@ -138,10 +140,29 @@ const processMLServiceOCR = async (scriptId) => {
       }
     }
     
-    // Update script with OCR results
+    // Update script with OCR results - save to pages[].ocrText
+    const updateOperations = results.map(result => ({
+      updateOne: {
+        filter: { _id: scriptId, 'pages.pageNumber': result.pageNumber },
+        update: {
+          $set: {
+            'pages.$.ocrText': result.text,
+            'pages.$.processedAt': new Date(),
+            'pages.$.ocrConfidence': result.confidence,
+            'pages.$.ocrProvider': result.provider
+          }
+        }
+      }
+    }));
+
+    // Update each page with its OCR text
+    if (updateOperations.length > 0) {
+      await Script.bulkWrite(updateOperations);
+    }
+
+    // Update script status
     await Script.findByIdAndUpdate(scriptId, {
       $set: {
-        ocrResults: results,
         status: 'processed',
         processedAt: new Date()
       }
