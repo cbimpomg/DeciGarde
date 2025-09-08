@@ -1,488 +1,286 @@
 const Script = require('../models/Script');
 const RubricTemplate = require('../models/RubricTemplate');
-const natural = require('natural');
 
 class AIMarkingService {
-  constructor() {
-    this.tokenizer = new natural.WordTokenizer();
-    this.tfidf = new natural.TfIdf();
-  }
+    constructor() {
+        // Pre-built rubrics for common subjects and question types
+        this.preBuiltRubrics = {
+            physics: {
+                mechanics: {
+                    name: "Physics Mechanics Rubric",
+                    questions: [
+                        {
+                            questionNumber: 1,
+                            questionText: "Explain Newton's three laws of motion with examples",
+                            questionType: "explanation",
+                            maxScore: 15,
+                            keywords: ["newton", "laws", "motion", "force", "action", "reaction", "inertia", "acceleration", "mass"],
+                            scoringCriteria: [
+                                { criterion: "Clear explanation of all three laws", points: 8 },
+                                { criterion: "Relevant examples for each law", points: 5 },
+                                { criterion: "Correct scientific terminology", points: 2 }
+                            ]
+                        },
+                        {
+                            questionNumber: 2,
+                            questionText: "Calculate the acceleration of a 2kg object when a force of 10N is applied",
+                            questionType: "calculation",
+                            maxScore: 10,
+                            keywords: ["acceleration", "force", "mass", "newton", "f=ma", "formula", "calculation"],
+                            scoringCriteria: [
+                                { criterion: "Correct formula application (F=ma)", points: 4 },
+                                { criterion: "Correct calculation", points: 4 },
+                                { criterion: "Proper units", points: 2 }
+                            ]
+                        }
+                    ]
+                },
+                electricity: {
+                    name: "Physics Electricity Rubric",
+                    questions: [
+                        {
+                            questionNumber: 1,
+                            questionText: "Explain Ohm's law and its applications",
+                            questionType: "explanation",
+                            maxScore: 12,
+                            keywords: ["ohm", "law", "voltage", "current", "resistance", "v=ir", "circuit"],
+                            scoringCriteria: [
+                                { criterion: "Clear explanation of Ohm's law", points: 6 },
+                                { criterion: "Practical applications", points: 4 },
+                                { criterion: "Mathematical relationship", points: 2 }
+                            ]
+                        }
+                    ]
+                }
+            },
+            mathematics: {
+                algebra: {
+                    name: "Mathematics Algebra Rubric",
+                    questions: [
+                        {
+                            questionNumber: 1,
+                            questionText: "Solve the quadratic equation: x² + 5x + 6 = 0",
+                            questionType: "calculation",
+                            maxScore: 10,
+                            keywords: ["quadratic", "equation", "solve", "factor", "formula", "roots"],
+                            scoringCriteria: [
+                                { criterion: "Correct method application", points: 4 },
+                                { criterion: "Accurate calculation", points: 4 },
+                                { criterion: "Proper solution format", points: 2 }
+                            ]
+                        }
+                    ]
+                },
+                calculus: {
+                    name: "Mathematics Calculus Rubric",
+                    questions: [
+                        {
+                            questionNumber: 1,
+                            questionText: "Find the derivative of f(x) = x³ + 2x² - 5x + 3",
+                            questionType: "calculation",
+                            maxScore: 8,
+                            keywords: ["derivative", "differentiation", "power rule", "polynomial"],
+                            scoringCriteria: [
+                                { criterion: "Correct application of power rule", points: 4 },
+                                { criterion: "Accurate calculation", points: 3 },
+                                { criterion: "Proper notation", points: 1 }
+                            ]
+                        }
+                    ]
+                }
+            },
+            chemistry: {
+                general: {
+                    name: "Chemistry General Rubric",
+                    questions: [
+                        {
+                            questionNumber: 1,
+                            questionText: "Explain the periodic table trends and their significance",
+                            questionType: "explanation",
+                            maxScore: 12,
+                            keywords: ["periodic", "table", "trends", "atomic", "radius", "electronegativity"],
+                            scoringCriteria: [
+                                { criterion: "Clear explanation of trends", points: 6 },
+                                { criterion: "Understanding of significance", points: 4 },
+                                { criterion: "Correct terminology", points: 2 }
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+    }
 
-  /**
-   * Main marking function that processes a script using AI
-   */
-  async markScript(scriptId) {
-    try {
-      console.log(`🤖 Starting AI marking for script: ${scriptId}`);
-      
-      const script = await Script.findById(scriptId);
-      if (!script) {
-        throw new Error('Script not found');
-      }
-
-      // Check if script has OCR text
-      const hasOCRText = script.pages.some(page => page.ocrText && page.ocrText.trim() !== '');
-      if (!hasOCRText) {
-        throw new Error('Script has no OCR text available for marking');
-      }
-
-      // Check if script has questions and rubrics
-      if (!script.questions || script.questions.length === 0) {
-        throw new Error('Script has no questions defined for marking');
-      }
-
-      // Update script status to processing
-      script.status = 'processing';
-      await script.save();
-
-      // Mark each question
-      for (const question of script.questions) {
+    async markScript(scriptId) {
         try {
-          console.log(`📝 Marking question ${question.questionNumber}: ${question.questionText}`);
-          
-          const markingResult = await this.markQuestion(question, script.pages);
-          
-          // Update question with AI marking results
-          question.aiScore = markingResult.score;
-          question.aiFeedback = markingResult.feedback;
-          question.keywords = markingResult.matchedKeywords;
-          question.confidence = markingResult.confidence;
-          question.semanticScore = markingResult.semanticScore;
-          question.markingDetails = markingResult.details;
-          
-          console.log(`✅ Question ${question.questionNumber} marked: ${markingResult.score}/${question.maxScore}`);
-          
-        } catch (questionError) {
-          console.error(`❌ Error marking question ${question.questionNumber}:`, questionError);
-          question.aiScore = 0;
-          question.aiFeedback = 'Error in AI marking';
-          question.keywords = [];
-          question.confidence = 0;
-          question.semanticScore = 0;
-        }
-      }
+            console.log(`🤖 Starting simulated AI marking for script: ${scriptId}`);
+            
+            const script = await Script.findById(scriptId);
+            if (!script) {
+                throw new Error('Script not found');
+            }
 
-      // Calculate final scores
-      this.calculateFinalScores(script);
-      
-      // Update script status
-      script.status = 'marked';
-      script.markedAt = new Date();
-      
-      await script.save();
-      
-      console.log(`🎉 AI marking completed for script: ${scriptId}`);
-      
-      return {
-        success: true,
-        scriptId: script._id,
-        totalScore: script.totalScore,
-        maxPossibleScore: script.maxPossibleScore,
-        questionsMarked: script.questions.length
-      };
-      
-    } catch (error) {
-      console.error(`❌ AI marking failed for script ${scriptId}:`, error);
-      
-      // Update script status to indicate failure
-      if (script) {
-        script.status = 'marking_failed';
-        script.error = error.message;
-        await script.save();
-      }
-      
-      throw error;
-    }
-  }
+            // Get pre-built rubric based on subject
+            const rubric = this.getPreBuiltRubric(script.subject);
+            if (!rubric) {
+                throw new Error(`No pre-built rubric found for subject: ${script.subject}`);
+            }
 
-  /**
-   * Mark a single question using AI algorithms
-   */
-  async markQuestion(question, scriptPages) {
-    try {
-      // Get the rubric template for this question type
-      const rubricTemplate = await this.getRubricTemplate(question.questionType, question.subject);
-      
-      // Combine all OCR text for analysis
-      const fullText = scriptPages
-        .map(page => page.ocrText)
-        .join(' ')
-        .toLowerCase();
-      
-      // Extract student answer (this would need to be implemented based on your question structure)
-      const studentAnswer = this.extractStudentAnswer(question, fullText);
-      
-      // Perform marking based on rubric template
-      const markingResult = await this.applyRubric(
-        studentAnswer, 
-        rubricTemplate, 
-        question.maxScore || rubricTemplate.defaultMaxScore
-      );
-      
-      return markingResult;
-      
-    } catch (error) {
-      console.error('Error in markQuestion:', error);
-      throw error;
-    }
-  }
+            // Simulate AI marking for each question
+            const markingResults = [];
+            let totalScore = 0;
+            let totalMaxScore = 0;
 
-  /**
-   * Get appropriate rubric template for question type and subject
-   */
-  async getRubricTemplate(questionType, subject) {
-    try {
-      // First try to get specific template for subject and question type
-      let template = await RubricTemplate.getTemplates(questionType, subject);
-      
-      if (template && template.length > 0) {
-        return template[0]; // Return the most popular/effective template
-      }
-      
-      // Fallback to general template for question type
-      template = await RubricTemplate.getTemplates(questionType, 'general');
-      
-      if (template && template.length > 0) {
-        return template[0];
-      }
-      
-      // If no template found, create a basic default
-      return this.createDefaultTemplate(questionType);
-      
-    } catch (error) {
-      console.error('Error getting rubric template:', error);
-      return this.createDefaultTemplate(questionType);
-    }
-  }
+            for (const question of rubric.questions) {
+                const studentAnswer = this.extractStudentAnswer(script, question.questionNumber);
+                const markingResult = this.simulateAIMarking(question, studentAnswer);
+                
+                markingResults.push({
+                    questionNumber: question.questionNumber,
+                    questionText: question.questionText,
+                    questionType: question.questionType,
+                    maxScore: question.maxScore,
+                    aiScore: markingResult.score,
+                    aiFeedback: markingResult.feedback,
+                    keywords: markingResult.matchedKeywords,
+                    confidence: markingResult.confidence,
+                    semanticScore: markingResult.semanticScore,
+                    markingDetails: markingResult.details
+                });
 
-  /**
-   * Create a default template if none exists
-   */
-  createDefaultTemplate(questionType) {
-    const defaultTemplates = {
-      'definition': {
-        scoringMethod: 'keyword_matching',
-        defaultMaxScore: 5,
-        templateStructure: {
-          keywords: [
-            { word: 'definition', weight: 2, required: true },
-            { word: 'explanation', weight: 1.5, required: false }
-          ],
-          scoringCriteria: [
-            { criterion: 'Correct definition', points: 3, description: 'Student provides accurate definition' },
-            { criterion: 'Clear explanation', points: 2, description: 'Student explains the concept clearly' }
-          ]
-        }
-      },
-      'explanation': {
-        scoringMethod: 'semantic_analysis',
-        defaultMaxScore: 10,
-        templateStructure: {
-          keywords: [
-            { word: 'process', weight: 2, required: true },
-            { word: 'steps', weight: 1.5, required: true }
-          ],
-          scoringCriteria: [
-            { criterion: 'Process overview', points: 3, description: 'Student provides clear process overview' },
-            { criterion: 'Key steps', points: 4, description: 'Student identifies and explains key steps' },
-            { criterion: 'Logical flow', points: 3, description: 'Student presents information in logical order' }
-          ]
-        }
-      },
-      'calculation': {
-        scoringMethod: 'numerical_verification',
-        defaultMaxScore: 8,
-        templateStructure: {
-          keywords: [
-            { word: 'calculation', weight: 2, required: true },
-            { word: 'formula', weight: 1.5, required: true }
-          ],
-          scoringCriteria: [
-            { criterion: 'Correct formula', points: 3, description: 'Student uses correct mathematical formula' },
-            { criterion: 'Calculation steps', points: 3, description: 'Student shows clear calculation steps' },
-            { criterion: 'Correct answer', points: 2, description: 'Student arrives at correct numerical answer' }
-          ]
-        }
-      }
-    };
-    
-    return defaultTemplates[questionType] || defaultTemplates['definition'];
-  }
+                totalScore += markingResult.score;
+                totalMaxScore += question.maxScore;
+            }
 
-  /**
-   * Apply rubric to student answer and calculate score
-   */
-  async applyRubric(studentAnswer, rubricTemplate, maxScore) {
-    try {
-      const result = {
-        score: 0,
-        feedback: '',
-        matchedKeywords: [],
-        confidence: 0,
-        semanticScore: 0,
-        details: {}
-      };
-
-      // Apply different scoring methods based on rubric template
-      switch (rubricTemplate.scoringMethod) {
-        case 'keyword_matching':
-          result.score = this.calculateKeywordScore(studentAnswer, rubricTemplate, maxScore);
-          result.matchedKeywords = this.findMatchedKeywords(studentAnswer, rubricTemplate);
-          break;
-          
-        case 'semantic_analysis':
-          result.score = this.calculateSemanticScore(studentAnswer, rubricTemplate, maxScore);
-          result.semanticScore = result.score / maxScore;
-          break;
-          
-        case 'numerical_verification':
-          result.score = this.calculateNumericalScore(studentAnswer, rubricTemplate, maxScore);
-          break;
-          
-        case 'content_analysis':
-          result.score = this.calculateContentScore(studentAnswer, rubricTemplate, maxScore);
-          break;
-          
-        default:
-          result.score = this.calculateKeywordScore(studentAnswer, rubricTemplate, maxScore);
-      }
-
-      // Generate feedback based on scoring criteria
-      result.feedback = this.generateFeedback(result.score, maxScore, rubricTemplate);
-      
-      // Calculate confidence based on various factors
-      result.confidence = this.calculateConfidence(result, rubricTemplate);
-      
-      return result;
-      
-    } catch (error) {
-      console.error('Error applying rubric:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Calculate score based on keyword matching
-   */
-  calculateKeywordScore(studentAnswer, rubricTemplate, maxScore) {
-    let totalScore = 0;
-    const matchedKeywords = this.findMatchedKeywords(studentAnswer, rubricTemplate);
-    
-    // Calculate score based on matched keywords and their weights
-    for (const keyword of matchedKeywords) {
-      totalScore += keyword.weight;
-    }
-    
-    // Apply bonus criteria if available
-    if (rubricTemplate.templateStructure.bonusCriteria) {
-      for (const bonus of rubricTemplate.templateStructure.bonusCriteria) {
-        if (this.checkBonusCriteria(studentAnswer, bonus)) {
-          totalScore += bonus.bonusPoints;
-        }
-      }
-    }
-    
-    // Ensure score doesn't exceed maximum
-    return Math.min(totalScore, maxScore);
-  }
-
-  /**
-   * Find keywords that match in student answer
-   */
-  findMatchedKeywords(studentAnswer, rubricTemplate) {
-    const matchedKeywords = [];
-    const answerLower = studentAnswer.toLowerCase();
-    
-    for (const keyword of rubricTemplate.templateStructure.keywords) {
-      // Check main keyword
-      if (answerLower.includes(keyword.word.toLowerCase())) {
-        matchedKeywords.push({
-          word: keyword.word,
-          weight: keyword.weight,
-          required: keyword.required,
-          type: 'exact_match'
-        });
-        continue;
-      }
-      
-      // Check synonyms
-      if (keyword.synonyms) {
-        for (const synonym of keyword.synonyms) {
-          if (answerLower.includes(synonym.toLowerCase())) {
-            matchedKeywords.push({
-              word: keyword.word,
-              weight: keyword.weight * 0.8, // Slight penalty for synonym
-              required: keyword.required,
-              type: 'synonym_match'
+            // Update script with marking results
+            await Script.findByIdAndUpdate(scriptId, {
+                $set: {
+                    'questions': markingResults,
+                    'totalScore': totalScore,
+                    'maxPossibleScore': totalMaxScore,
+                    'status': 'marked',
+                    'markedAt': new Date(),
+                    'markingMethod': 'simulated_ai'
+                }
             });
-            break;
-          }
+
+            console.log(`✅ Simulated AI marking completed for script: ${scriptId}`);
+            console.log(`📊 Total Score: ${totalScore}/${totalMaxScore} (${((totalScore/totalMaxScore)*100).toFixed(1)}%)`);
+
+            return {
+                success: true,
+                scriptId: scriptId,
+                totalScore: totalScore,
+                maxPossibleScore: totalMaxScore,
+                percentage: ((totalScore/totalMaxScore)*100).toFixed(1),
+                questions: markingResults
+            };
+
+        } catch (error) {
+            console.error(`❌ Error in simulated AI marking: ${error.message}`);
+            throw error;
         }
-      }
-      
-      // Check for partial matches (for longer words)
-      if (keyword.word.length > 5) {
-        const wordParts = keyword.word.toLowerCase().split(' ');
-        for (const part of wordParts) {
-          if (part.length > 3 && answerLower.includes(part)) {
-            matchedKeywords.push({
-              word: keyword.word,
-              weight: keyword.weight * 0.6, // Penalty for partial match
-              required: keyword.required,
-              type: 'partial_match'
-            });
-            break;
-          }
+    }
+
+    getPreBuiltRubric(subject) {
+        // Return appropriate rubric based on subject
+        if (this.preBuiltRubrics[subject]) {
+            // Return the first available rubric for the subject
+            const subjectRubrics = this.preBuiltRubrics[subject];
+            const firstKey = Object.keys(subjectRubrics)[0];
+            return subjectRubrics[firstKey];
         }
-      }
+        
+        // Default to physics if subject not found
+        return this.preBuiltRubrics.physics.mechanics;
     }
-    
-    return matchedKeywords;
-  }
 
-  /**
-   * Calculate semantic similarity score
-   */
-  calculateSemanticScore(studentAnswer, rubricTemplate, maxScore) {
-    // This is a simplified semantic analysis
-    // In a production system, you'd use more sophisticated NLP models
-    
-    const answerTokens = this.tokenizer.tokenize(studentAnswer.toLowerCase());
-    const rubricTokens = this.tokenizer.tokenize(rubricTemplate.description.toLowerCase());
-    
-    // Calculate Jaccard similarity
-    const intersection = answerTokens.filter(token => rubricTokens.includes(token));
-    const union = [...new Set([...answerTokens, ...rubricTokens])];
-    
-    const similarity = intersection.length / union.length;
-    
-    return Math.round(similarity * maxScore);
-  }
-
-  /**
-   * Calculate numerical verification score
-   */
-  calculateNumericalScore(studentAnswer, rubricTemplate, maxScore) {
-    // Extract numbers from student answer
-    const numbers = studentAnswer.match(/\d+(?:\.\d+)?/g);
-    
-    if (!numbers || numbers.length === 0) {
-      return 0;
+    extractStudentAnswer(script, questionNumber) {
+        // Extract student answer from OCR text
+        const pageText = script.pages?.[0]?.ocrText || '';
+        
+        // Simple extraction - look for question number and extract following text
+        const questionPattern = new RegExp(`${questionNumber}[\\).]\\s*(.*?)(?=\\d+[\\).]|$)`, 'is');
+        const match = pageText.match(questionPattern);
+        
+        return match ? match[1].trim() : pageText;
     }
-    
-    // For now, give partial credit for showing work
-    // In a production system, you'd implement actual mathematical verification
-    return Math.round(maxScore * 0.7); // 70% for showing numerical work
-  }
 
-  /**
-   * Calculate content analysis score
-   */
-  calculateContentScore(studentAnswer, rubricTemplate, maxScore) {
-    // Analyze content length, structure, and quality
-    const words = studentAnswer.split(' ').length;
-    const sentences = studentAnswer.split(/[.!?]+/).length;
-    
-    // Basic scoring based on content length and structure
-    let score = 0;
-    
-    if (words >= 50) score += maxScore * 0.3;
-    if (words >= 100) score += maxScore * 0.2;
-    if (sentences >= 3) score += maxScore * 0.2;
-    if (sentences >= 5) score += maxScore * 0.1;
-    
-    // Add keyword matching score
-    const keywordScore = this.calculateKeywordScore(studentAnswer, rubricTemplate, maxScore * 0.2);
-    score += keywordScore;
-    
-    return Math.min(score, maxScore);
-  }
+    simulateAIMarking(question, studentAnswer) {
+        // Simulate AI marking with realistic scoring
+        const answer = studentAnswer.toLowerCase();
+        const keywords = question.keywords.map(k => k.toLowerCase());
+        
+        // Keyword matching
+        const matchedKeywords = keywords.filter(keyword => 
+            answer.includes(keyword)
+        );
+        
+        const keywordScore = (matchedKeywords.length / keywords.length) * question.maxScore * 0.6;
+        
+        // Content length analysis
+        const contentScore = Math.min(answer.length / 100, 1) * question.maxScore * 0.2;
+        
+        // Random variation for realistic scoring (simulate AI uncertainty)
+        const variation = (Math.random() - 0.5) * 2; // ±1 point variation
+        
+        const baseScore = keywordScore + contentScore;
+        const finalScore = Math.max(0, Math.min(question.maxScore, Math.round(baseScore + variation)));
+        
+        // Generate realistic feedback
+        const feedback = this.generateFeedback(question, matchedKeywords, finalScore, question.maxScore);
+        
+        // Calculate confidence based on keyword matches
+        const confidence = Math.min(0.95, (matchedKeywords.length / keywords.length) * 0.8 + 0.15);
+        
+        return {
+            score: finalScore,
+            feedback: feedback,
+            matchedKeywords: matchedKeywords,
+            confidence: confidence,
+            semanticScore: keywordScore / question.maxScore,
+            details: {
+                keywordMatches: matchedKeywords.length,
+                totalKeywords: keywords.length,
+                contentLength: answer.length,
+                scoringBreakdown: {
+                    keywordScore: keywordScore,
+                    contentScore: contentScore,
+                    variation: variation
+                }
+            }
+        };
+    }
 
-  /**
-   * Check if bonus criteria are met
-   */
-  checkBonusCriteria(studentAnswer, bonus) {
-    const answerLower = studentAnswer.toLowerCase();
-    return answerLower.includes(bonus.criterion.toLowerCase());
-  }
+    generateFeedback(question, matchedKeywords, score, maxScore) {
+        const percentage = (score / maxScore) * 100;
+        
+        if (percentage >= 80) {
+            return `Excellent work! You demonstrated strong understanding of ${question.questionText.toLowerCase()}. You covered key concepts well and provided good explanations.`;
+        } else if (percentage >= 60) {
+            return `Good effort! You showed understanding of the main concepts. Consider providing more detailed explanations and examples to improve your score.`;
+        } else if (percentage >= 40) {
+            return `Fair attempt. You have some understanding of the topic, but need to provide more comprehensive answers and include key terminology.`;
+        } else {
+            return `This answer needs improvement. Please review the topic and ensure you include key concepts and proper explanations.`;
+        }
+    }
 
-  /**
-   * Generate feedback based on score and rubric
-   */
-  generateFeedback(score, maxScore, rubricTemplate) {
-    const percentage = (score / maxScore) * 100;
-    
-    if (percentage >= 90) {
-      return "Excellent answer! You've demonstrated comprehensive understanding of the topic.";
-    } else if (percentage >= 80) {
-      return "Very good answer! You've covered most key points well.";
-    } else if (percentage >= 70) {
-      return "Good answer! You've addressed the main points with some room for improvement.";
-    } else if (percentage >= 60) {
-      return "Fair answer. Consider including more specific details and examples.";
-    } else if (percentage >= 50) {
-      return "Basic answer. Try to expand on your points and provide more context.";
-    } else {
-      return "Your answer needs significant improvement. Review the question requirements and provide more comprehensive responses.";
+    async getRubricTemplate(questionType, subject) {
+        // Return pre-built template
+        const rubric = this.getPreBuiltRubric(subject);
+        return {
+            name: rubric.name,
+            questionType: questionType,
+            subject: subject,
+            templateStructure: rubric.questions[0]
+        };
     }
-  }
 
-  /**
-   * Calculate confidence in the marking
-   */
-  calculateConfidence(result, rubricTemplate) {
-    let confidence = 0.5; // Base confidence
-    
-    // Increase confidence based on keyword matches
-    if (result.matchedKeywords.length > 0) {
-      confidence += 0.2;
+    async createDefaultTemplate(questionType, subject) {
+        // Return default template
+        return this.getRubricTemplate(questionType, subject);
     }
-    
-    // Increase confidence for high scores (clear answers)
-    if (result.score > 0) {
-      confidence += 0.1;
-    }
-    
-    // Decrease confidence for edge cases
-    if (result.score === 0) {
-      confidence -= 0.2;
-    }
-    
-    // Ensure confidence is between 0 and 1
-    return Math.max(0, Math.min(1, confidence));
-  }
-
-  /**
-   * Extract student answer from OCR text
-   * This is a simplified version - you'll need to implement based on your question structure
-   */
-  extractStudentAnswer(question, fullText) {
-    // For now, return the full text
-    // In a production system, you'd implement logic to extract specific answers
-    // based on question boundaries, page numbers, etc.
-    return fullText;
-  }
-
-  /**
-   * Calculate final scores for the script
-   */
-  calculateFinalScores(script) {
-    let totalScore = 0;
-    let maxPossibleScore = 0;
-    
-    for (const question of script.questions) {
-      totalScore += question.aiScore || 0;
-      maxPossibleScore += question.maxScore || 0;
-    }
-    
-    script.totalScore = totalScore;
-    script.maxPossibleScore = maxPossibleScore;
-    
-    // Calculate percentage
-    if (maxPossibleScore > 0) {
-      script.percentage = (totalScore / maxPossibleScore) * 100;
-    }
-  }
 }
 
 module.exports = new AIMarkingService();

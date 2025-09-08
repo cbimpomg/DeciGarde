@@ -321,8 +321,9 @@ router.get('/export', authenticateToken, async (req, res, next) => {
       { $sort: { uploadedAt: -1 } }
     ]);
     
-    if (format === 'csv') {
-      // Convert to CSV format
+    console.log('Export format requested:', format);
+    if (format === 'csv' || format === 'excel') {
+      // Convert to CSV format (Excel can read CSV files)
       const csvHeaders = [
         'Script ID',
         'Student ID',
@@ -363,8 +364,14 @@ router.get('/export', authenticateToken, async (req, res, next) => {
         .map(row => row.map(cell => `"${cell}"`).join(','))
         .join('\n');
       
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=analytics-${Date.now()}.csv`);
+      // Set appropriate headers based on format
+      if (format === 'excel') {
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=analytics-${Date.now()}.xlsx`);
+      } else {
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=analytics-${Date.now()}.csv`);
+      }
       res.send(csvContent);
     } else {
       // Return JSON format

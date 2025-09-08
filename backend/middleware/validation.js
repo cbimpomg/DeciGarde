@@ -95,6 +95,14 @@ const markingUpdateSchema = Joi.object({
   }),
   manualFeedback: Joi.string().max(1000).allow('').optional().messages({
     'string.max': 'Manual feedback cannot exceed 1000 characters'
+  }),
+  teacherScore: Joi.number().integer().min(0).allow(null).messages({
+    'number.base': 'Teacher score must be a number',
+    'number.integer': 'Teacher score must be an integer',
+    'number.min': 'Teacher score cannot be negative'
+  }),
+  teacherFeedback: Joi.string().max(1000).allow('').optional().messages({
+    'string.max': 'Teacher feedback cannot exceed 1000 characters'
   })
 });
 

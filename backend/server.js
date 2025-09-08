@@ -6,6 +6,8 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -72,8 +74,71 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static file serving for uploaded images
-app.use('/uploads', express.static('uploads'));
+// Static file serving for uploaded images with CORS headers
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for all uploads requests
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+    'Access-Control-Allow-Credentials': 'true'
+  });
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  
+  next();
+}, express.static('uploads'));
+
+// Base64 image endpoint to avoid CORS issues
+app.get('/api/images/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const imagePath = path.join(__dirname, 'uploads', 'scripts', filename);
+  
+  // Set CORS headers
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+    'Access-Control-Allow-Credentials': 'true'
+  });
+  
+  // Check if file exists
+  if (!fs.existsSync(imagePath)) {
+    return res.status(404).json({ error: 'Image not found' });
+  }
+  
+  try {
+    // Read the image file and convert to base64
+    const imageBuffer = fs.readFileSync(imagePath);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = 'image/jpeg'; // You can detect this dynamically if needed
+    
+    // Return base64 data URL
+    res.json({
+      success: true,
+      dataUrl: `data:${mimeType};base64,${base64Image}`,
+      filename: filename
+    });
+  } catch (error) {
+    console.error('Error reading image file:', error);
+    res.status(500).json({ error: 'Failed to read image file' });
+  }
+});
+
+// Handle preflight requests for images
+app.options('/api/images/:filename', (req, res) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+    'Access-Control-Allow-Credentials': 'true'
+  });
+  res.sendStatus(200);
+});
 
 // Health check endpoints
 app.get('/health', (req, res) => {

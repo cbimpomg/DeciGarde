@@ -151,11 +151,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/rubric-templates - Get all available rubric templates
-router.get('/templates/all', authenticateToken, async (req, res) => {
+// GET /api/rubric-templates/all - Get all available rubric templates
+router.get('/all', authenticateToken, async (req, res) => {
   try {
     const templates = await RubricTemplate.find({ isActive: true })
-      .sort({ usageCount: -1, averageEffectiveness: -1 });
+      .sort({ createdAt: -1 }); // Use simpler sorting
     
     res.json(templates);
   } catch (error) {
@@ -165,7 +165,7 @@ router.get('/templates/all', authenticateToken, async (req, res) => {
 });
 
 // GET /api/rubric-templates/:type/:subject - Get templates by type and subject
-router.get('/templates/:type/:subject', authenticateToken, async (req, res) => {
+router.get('/:type/:subject', authenticateToken, async (req, res) => {
   try {
     const { type, subject } = req.params;
     
@@ -179,20 +179,22 @@ router.get('/templates/:type/:subject', authenticateToken, async (req, res) => {
 });
 
 // GET /api/rubric-templates/popular - Get popular templates
-router.get('/templates/popular', authenticateToken, async (req, res) => {
+router.get('/popular', authenticateToken, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const templates = await RubricTemplate.getPopularTemplates(limit);
+    const templates = await RubricTemplate.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(limit);
     
     res.json(templates);
   } catch (error) {
     console.error('Error fetching popular templates:', error);
-    res.status(500).json({ error: 'Failed to fetch popular templates' });
+    res.status(500).json({ error: 'Failed to fetch templates' });
   }
 });
 
-// POST /api/ai/rubric-suggestion - Get AI suggestion for rubric keywords
-router.post('/ai/suggestion', authenticateToken, async (req, res) => {
+// POST /api/ai/suggestion - Get AI suggestion for rubric keywords
+router.post('/suggestion', authenticateToken, async (req, res) => {
   try {
     const { questionText, questionType } = req.body;
     

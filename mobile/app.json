@@ -18,8 +18,9 @@
       "bundleIdentifier": "com.decigrade.mobile",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to scan student scripts.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select script images.",
-        "NSMicrophoneUsageDescription": "This app needs access to microphone for video recording."
+        "NSPhotoLibraryUsageDescription": "Allow DeciGrade to access your media library.",
+        "NSMicrophoneUsageDescription": "This app needs access to microphone for video recording.",
+        "NSPhotoLibraryAddUsageDescription": "Allow DeciGrade to save photos to your media library."
       }
     },
     "android": {
@@ -28,7 +29,8 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
     "web": {
@@ -58,8 +60,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": null
+        "projectId": "af242469-66ea-4ad5-bb94-b2eb1f8a5357"
       }
-    }
+    },
+    "owner": "aeric"
   }
-} 
+}

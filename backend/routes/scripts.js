@@ -1,16 +1,19 @@
 const express = require('express');
+const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const FormData = require('form-data');
 const { v4: uuidv4 } = require('uuid');
 const sharp = require('sharp');
+const axios = require('axios');
 
 const Script = require('../models/Script');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { validateScriptUpload } = require('../middleware/validation');
 const { processOCR } = require('../services/ocrService');
+const aiMarkingService = require('../services/aiMarkingService');
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -170,6 +173,34 @@ const processMLServiceOCR = async (scriptId) => {
     
     console.log(`🎉 ML Service OCR completed for script ${scriptId}`);
     
+    // Automatically trigger AI marking after OCR completion
+    console.log(`🤖 Starting automatic AI marking for script ${scriptId}`);
+    try {
+      const markingResult = await aiMarkingService.markScript(scriptId);
+      console.log(`✅ AI marking completed: ${markingResult.totalScore}/${markingResult.maxPossibleScore} (${markingResult.percentage}%)`);
+      
+      // Emit real-time update for marking completion
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('script-marked', {
+          scriptId: scriptId,
+          totalScore: markingResult.totalScore,
+          maxPossibleScore: markingResult.maxPossibleScore,
+          percentage: markingResult.percentage,
+          status: 'marked'
+        });
+      }
+    } catch (markingError) {
+      console.error(`❌ AI marking failed for script ${scriptId}:`, markingError);
+      // Update script status to indicate marking failure
+      await Script.findByIdAndUpdate(scriptId, {
+        $set: {
+          status: 'marking_failed',
+          error: markingError.message
+        }
+      });
+    }
+    
   } catch (error) {
     console.error(`❌ ML Service OCR failed for script ${scriptId}:`, error);
     // Update script status to indicate failure
@@ -187,15 +218,22 @@ router.post('/upload',
   authenticateToken, 
   upload.array('pages', 10), 
   parseJsonFields,
-  validateScriptUpload,
   async (req, res, next) => {
     try {
-      const { studentId, subject, examTitle, markingRubric } = req.body;
+      const { studentId, subject, examTitle } = req.body;
       
       // Check if user can access this subject
       if (!req.user.canAccessSubject(subject)) {
         return res.status(403).json({
           error: 'You do not have permission to upload scripts for this subject'
+        });
+      }
+      
+      // Get pre-built rubric for the subject
+      const markingRubric = aiMarkingService.getPreBuiltRubric(subject);
+      if (!markingRubric) {
+        return res.status(400).json({
+          error: `No pre-built rubric available for subject: ${subject}`
         });
       }
       
@@ -552,7 +590,7 @@ router.put('/:id/mark', authenticateToken, async (req, res, next) => {
     }
     
     // Start marking process
-    await markScript(script._id);
+    await aiMarkingService.markScript(script._id);
     
     res.json({ 
       message: 'Marking process started',

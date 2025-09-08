@@ -138,9 +138,11 @@ router.put('/:scriptId/questions/:questionNumber',
         });
       }
       
-      // Update question
+      // Update question with both naming conventions for consistency
+      question.teacherScore = manualScore;
+      question.teacherFeedback = manualFeedback;
       question.manualScore = manualScore;
-      question.manualFeedback = manualFeedback || '';
+      question.manualFeedback = manualFeedback;
       question.isManuallyReviewed = true;
       
       // Update final score
