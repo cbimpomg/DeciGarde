@@ -62,13 +62,18 @@ class OCRService:
                             lang='en'
                         )
                         logger.info("✅ PaddleOCR initialized successfully (CPU mode)")
-                except TypeError:
-                    # Fallback to CPU mode if GPU parameter not supported
-                    self.engines['paddleocr'] = PaddleOCR(
-                        use_angle_cls=True, 
-                        lang='en'
-                    )
-                    logger.info("✅ PaddleOCR initialized successfully (CPU mode - GPU parameter not supported)")
+                except Exception as e:
+                    # Fallback to CPU mode if any initialization fails
+                    logger.warning(f"PaddleOCR initialization failed: {e}")
+                    try:
+                        self.engines['paddleocr'] = PaddleOCR(
+                            use_angle_cls=True, 
+                            lang='en'
+                        )
+                        logger.info("✅ PaddleOCR initialized successfully (CPU mode - fallback)")
+                    except Exception as e2:
+                        logger.error(f"PaddleOCR fallback initialization failed: {e2}")
+                        self.engines['paddleocr'] = None
             else:
                 logger.warning("⚠️  PaddleOCR not available")
                 
@@ -88,9 +93,13 @@ class OCRService:
                         logger.info("✅ EasyOCR initialized successfully (CPU mode)")
                 except Exception as e:
                     # Fallback to CPU mode if GPU initialization fails
-                    logger.warning(f"GPU initialization failed for EasyOCR: {e}")
-                    self.engines['easyocr'] = easyocr.Reader(['en'], gpu=False)
-                    logger.info("✅ EasyOCR initialized successfully (CPU mode - fallback)")
+                    logger.warning(f"EasyOCR initialization failed: {e}")
+                    try:
+                        self.engines['easyocr'] = easyocr.Reader(['en'], gpu=False)
+                        logger.info("✅ EasyOCR initialized successfully (CPU mode - fallback)")
+                    except Exception as e2:
+                        logger.error(f"EasyOCR fallback initialization failed: {e2}")
+                        self.engines['easyocr'] = None
             else:
                 logger.warning("⚠️  EasyOCR not available")
                 
@@ -131,7 +140,7 @@ class OCRService:
             results = []
             
             # 1. Try PaddleOCR first (best for handwriting)
-            if 'paddleocr' in self.engines and enhance_handwriting:
+            if 'paddleocr' in self.engines and self.engines['paddleocr'] is not None and enhance_handwriting:
                 try:
                     paddle_result = self._extract_with_paddleocr(image)
                     if paddle_result['text'].strip():
@@ -141,7 +150,7 @@ class OCRService:
                     logger.warning(f"PaddleOCR failed: {e}")
             
             # 2. Try EasyOCR
-            if 'easyocr' in self.engines:
+            if 'easyocr' in self.engines and self.engines['easyocr'] is not None:
                 try:
                     easyocr_result = self._extract_with_easyocr(image, language)
                     if easyocr_result['text'].strip():
